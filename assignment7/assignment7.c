@@ -54,7 +54,7 @@ static void insertSort(char** array, int left, int right) {
 /* insert sort when the range gets small.       */
 static void quickSort(void* p) {
     SortParams* params = (SortParams*) p;
-    int subFlag = 0;
+    int subFlag = 0, ret = 0;
     pthread_t subT;
     char** array = params->array;
     int left = params->left;
@@ -93,7 +93,11 @@ static void quickSort(void* p) {
         if(activeThreads < maximumThreads) {
             activeThreads++;
             pthread_mutex_unlock(&mutex);
-            pthread_create(&subT, NULL, &threadFunc, &first);
+            ret = pthread_create(&subT, NULL, &threadFunc, &first);
+            if(ret != 0) {
+                perror("quickSort: pthread_create");
+                exit(1);
+            }
             subFlag = 1;
         } else {
             pthread_mutex_unlock(&mutex);
@@ -104,7 +108,11 @@ static void quickSort(void* p) {
         quickSort(&second);     /* sort the right partition */
     } else insertSort(array,i,j);       /* for a small range use insert sort */
     if(subFlag) {
-        pthread_join(subT, NULL);
+        ret = pthread_join(subT, NULL);
+        if(ret != 0) {
+            perror("quickSort: pthread_join");
+            exit(1);
+        }
         activeThreads--;
     }
 }
@@ -131,4 +139,9 @@ void sortThreaded(char** array, unsigned int count) {
     SortParams parameters;
     parameters.array = array; parameters.left = 0; parameters.right = count - 1;
     quickSort(&parameters);
+    int ret = pthread_mutex_destroy(&mutex);
+    if(ret != 0) {
+        perror("quickSort: pthread_create");
+        exit(1);
+    }
 }
